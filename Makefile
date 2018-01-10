@@ -1,4 +1,3 @@
-SOURCE_FILES?=$$(go list ./... | grep -v /vendor/)
 DOCKER_REGISTRY := zgalor
 DOCKER_IMAGE_NAME := prometheus-launcher
 

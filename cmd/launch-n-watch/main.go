@@ -14,12 +14,11 @@ import (
 )
 
 var watchPath = flag.String("watch-path", "", "the configuration path to watch")
-var workDir = flag.String("work-dir", ".", "the application working directory")
 
 func main() {
 
 	flag.Usage = func() {
-		fmt.Printf("Usage: %s [flags] app-to-launch [app-arg1 app-arg2 ...]\n", os.Args[0])
+		fmt.Printf("Usage: %s --watch-path=/path/to/watch app-to-launch [app-arg1 app-arg2 ...]\n", os.Args[0])
 		fmt.Println("Flags:")
 		flag.PrintDefaults()
 	}
@@ -53,13 +52,14 @@ func main() {
 			select {
 			case event := <-watcher.Events:
 				if event.Op&fsnotify.Create != 0 {
-					log.Println("modified file:", event.Name)
+					log.Println("modified file:", event.Name, "Sending SIGHUP to app: ", flag.Arg(0))
 					// when watch notifies change send SIGHUP to app
-					log.Println("Sending SIGHUP to app: ", flag.Arg(0))
-					syscall.Kill(pid, syscall.SIGHUP)
+					if e := syscall.Kill(pid, syscall.SIGHUP); e != nil {
+						log.Println("error:", e)
+					}
 				}
-			case err := <-watcher.Errors:
-				log.Println("error:", err)
+			case watchErr := <-watcher.Errors:
+				log.Println("error:", watchErr)
 			}
 		}
 	}()
@@ -73,10 +73,12 @@ func main() {
 	<-done
 }
 
+// launchApp launches the application.
+// it forks it as a child process and redirect stdin and stdout to/from it in a separate go routine
+// the func returns the child process pid
 func launchApp() int {
 	// launch app with args - save pid
 	cmd := exec.Command(flag.Arg(0), flag.Args()[1:]...)
-	cmd.Dir = *workDir
 	stdoutIn, _ := cmd.StdoutPipe()
 	stderrIn, _ := cmd.StderrPipe()
 
@@ -110,7 +112,7 @@ func launchApp() int {
 		if errStdout != nil || errStderr != nil {
 			log.Fatal("failed to capture stdout or stderr\n")
 		}
-		outStr, errStr := string(stdoutBuf.Bytes()), string(stderrBuf.Bytes())
+		outStr, errStr := stdoutBuf.String(), stderrBuf.String()
 		fmt.Printf("\nout:\n%s\nerr:\n%s\n", outStr, errStr)
 	}()
 

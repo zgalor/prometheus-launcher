@@ -13,20 +13,20 @@ import (
 	"github.com/fsnotify/fsnotify"
 )
 
-var watchPath = flag.String("watch-path", "", "the configuration path to watch")
+var watchPath = flag.String("watch-path", os.Getenv("LNW_WATCH_PATH"), "the configuration path to watch")
 
 func main() {
 
 	flag.Usage = func() {
-		fmt.Printf("Usage: %s --watch-path=/path/to/watch app-to-launch [app-arg1 app-arg2 ...]\n", os.Args[0])
+		fmt.Printf("Usage: %s [Flags] app-to-launch [app-arg1 app-arg2 ...]\n", os.Args[0])
 		fmt.Println("Flags:")
 		flag.PrintDefaults()
 	}
 
 	flag.Parse()
 
-	if len(*watchPath) < 1 {
-		log.Println("Missing path to watch")
+	if len(*watchPath) < 0 {
+		log.Println("Missing path to watch. Must be defined by either LNW_WATCH_PATH environment variable or --watch-path flag")
 		flag.Usage()
 		os.Exit(1)
 	}
@@ -67,7 +67,7 @@ func main() {
 	// start watch on path
 	err = watcher.Add(*watchPath)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("Failed to watch", *watchPath, err)
 		os.Exit(1)
 	}
 	<-done

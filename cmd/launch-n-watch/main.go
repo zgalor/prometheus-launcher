@@ -1,10 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -79,13 +77,9 @@ func main() {
 func launchApp() int {
 	// launch app with args - save pid
 	cmd := exec.Command(flag.Arg(0), flag.Args()[1:]...)
-	stdoutIn, _ := cmd.StdoutPipe()
-	stderrIn, _ := cmd.StderrPipe()
-
-	var stdoutBuf, stderrBuf bytes.Buffer
-	var errStdout, errStderr error
-	stdout := io.MultiWriter(os.Stdout, &stdoutBuf)
-	stderr := io.MultiWriter(os.Stderr, &stderrBuf)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	err := cmd.Start()
 	if err != nil {
@@ -96,24 +90,11 @@ func launchApp() int {
 	log.Println("Launched", flag.Arg(0), "pid", pid, "with params:", flag.Args()[1:])
 
 	go func() {
-		_, errStdout = io.Copy(stdout, stdoutIn)
-	}()
-
-	go func() {
-		_, errStderr = io.Copy(stderr, stderrIn)
-	}()
-
-	go func() {
 		err = cmd.Wait()
 		if err != nil {
 			log.Println("Error waiting for Cmd", err)
 			os.Exit(1)
 		}
-		if errStdout != nil || errStderr != nil {
-			log.Fatal("failed to capture stdout or stderr\n")
-		}
-		outStr, errStr := stdoutBuf.String(), stderrBuf.String()
-		fmt.Printf("\nout:\n%s\nerr:\n%s\n", outStr, errStr)
 	}()
 
 	return pid

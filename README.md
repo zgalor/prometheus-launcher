@@ -13,7 +13,7 @@ Launch Prometheus as child process, watch configmap path for changes, and send S
 
 `bin/lnw [--watch_path=/path/to/watch] app-to-launch [app_arg1, ..., app_argn]`
 
-### Argumets
+### Arguments
 
 `--watch-path` 
 

@@ -49,7 +49,7 @@ func main() {
 		for {
 			select {
 			case event := <-watcher.Events:
-				if event.Op&fsnotify.Create != 0 {
+				if event.Op&(fsnotify.Create|fsnotify.Write) != 0 {
 					log.Println("modified file:", event.Name, "Sending SIGHUP to app: ", flag.Arg(0))
 					// when watch notifies change send SIGHUP to app
 					if e := syscall.Kill(pid, syscall.SIGHUP); e != nil {
